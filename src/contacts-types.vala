@@ -35,8 +35,6 @@ public class Contacts.TypeSet : Object  {
     public bool in_store;
   }
 
-  // Dummy Data to mark the "Custom..." store entry
-  private static Data custom_dummy = new Data ();
   // Dummy Data to mark the "Other..." store entry
   private static Data other_dummy = new Data ();
 
@@ -250,7 +248,6 @@ public class Contacts.TypeSet : Object  {
     store.get (iter, 0, out display_name, 1, out data);
 
     assert (display_name != null); // Not separator
-    assert (data != custom_dummy); // Not custom...
 
     if (data == null) { // A custom label
       details.parameters.set ("type", "OTHER");
@@ -268,12 +265,6 @@ public class Contacts.TypeSet : Object  {
 
     if (has_pref)
       details.parameters.set ("type", "PREF");
-  }
-
-  public bool is_custom (TreeIter iter) {
-    Data data;
-    store.get (iter, 1, out data);
-    return data == custom_dummy;
   }
 
   private static TypeSet _general;
@@ -370,9 +361,7 @@ public class Contacts.TypeSet : Object  {
 public class Contacts.TypeCombo : Grid  {
   TypeSet type_set;
   ComboBox combo;
-  Entry entry;
   TreeIter last_active;
-  bool custom_mode;
   bool in_manual_change;
   public bool modified;
 
@@ -396,63 +385,8 @@ public class Contacts.TypeCombo : Grid  {
 	return s == null;
       });
 
-    entry = new Entry ();
-    entry.get_style_context ().add_class ("contacts-entry");
-    entry.set_halign (Align.FILL);
-    entry.set_hexpand (true);
-    // Make the default entry small so we don't unnecessarily
-    // expand the labels (it'll be expanded a bit anyway)
-    entry.width_chars = 4;
-
-    this.add (entry);
-
-    combo.set_no_show_all (true);
-    entry.set_no_show_all (true);
-
-    combo.show ();
-
     combo.changed.connect (combo_changed);
-    entry.focus_out_event.connect (entry_focus_out_event);
-    entry.activate.connect (entry_activate);
-    entry.key_release_event.connect (entry_key_release);
-  }
-
-  private void finish_custom () {
-    if (!custom_mode)
-      return;
-
-    custom_mode = false;
-    var text = entry.get_text ();
-
-    if (text != "") {
-      TreeIter iter;
-      type_set.add_custom_label (text, out iter);
-
-      last_active = iter;
-      combo.set_active_iter (iter);
-    } else {
-      combo.set_active_iter (last_active);
-    }
-
     combo.show ();
-    entry.hide ();
-  }
-
-  private void entry_activate () {
-    finish_custom ();
-  }
-
-  private bool entry_key_release (Gdk.EventKey event) {
-    if (event.keyval == Gdk.Key.Escape) {
-      entry.set_text ("");
-      finish_custom ();
-    }
-    return true;
-  }
-
-  private bool entry_focus_out_event (Gdk.EventFocus event) {
-    finish_custom ();
-    return false;
   }
 
   private void combo_changed (ComboBox combo) {
@@ -462,15 +396,8 @@ public class Contacts.TypeCombo : Grid  {
     modified = true;
     TreeIter iter;
     if (combo.get_active_iter (out iter)) {
-      if (type_set.is_custom (iter)) {
-	custom_mode = true;
-	entry.show ();
-	entry.grab_focus ();
-	combo.hide ();
-      } else {
-	last_active = iter;
-	this.changed ();
-      }
+      last_active = iter;
+      this.changed ();
     }
   }
 
